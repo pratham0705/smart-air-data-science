@@ -49,10 +49,6 @@ def get_sensors_for_location(location_id):
 
     records = []
 
-    print(f"\nLocation ID: {location_id}")
-    for sensor in response.json().get("results", []):
-        print(sensor.get("parameter"))
-
     for sensor in response.json().get("results", []):
         parameter = sensor.get("parameter") or {}
         latest = sensor.get("latest") or {}
