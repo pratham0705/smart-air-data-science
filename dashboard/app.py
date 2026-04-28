@@ -16,6 +16,8 @@ st.set_page_config(
     layout="wide"
 )
 
+st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
 DATA_PATH = "data/processed/station_predictions.csv"
 
 if not os.path.exists(DATA_PATH):
