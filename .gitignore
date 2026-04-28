@@ -4,4 +4,8 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
-smartair_env
+smartair_envsmartair_env/
+venv/
+__pycache__/
+.DS_Store
+*.pyc
