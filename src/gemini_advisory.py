@@ -1,7 +1,11 @@
 import os
 from google import genai
+from dotenv import load_dotenv
+import os
 
-client = genai.Client(api_key="AIzaSyDpnDmVfbiVBaWeA5ySqoMfke0sXslVvP0")
+load_dotenv()
+
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def generate_gemini_advisory(station, aqi, category, pollutant, trend, grap_stage, hotspot):
     prompt = f"""
