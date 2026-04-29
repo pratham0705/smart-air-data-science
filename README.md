@@ -55,6 +55,7 @@ python3 src/forecasting.py
 python3 src/lstm_forecasting.py
 python3 src/multiday_forecasting.py
 python3 src/live_prediction.py
+python3 src/clustering_hotspots.py
 
 streamlit run dashboard/app.py
 
