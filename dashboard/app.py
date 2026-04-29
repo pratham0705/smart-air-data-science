@@ -1,5 +1,11 @@
 import os
 from datetime import datetime, timedelta
+# import sys
+# sys.path.append("src")
+# from ai_advisory import generate_ai_advisory
+import sys
+sys.path.append("src")
+from gemini_advisory import generate_gemini_advisory
 
 import pandas as pd
 import streamlit as st
@@ -138,7 +144,7 @@ with overview_tab:
     k1.metric("Computed Avg AQI", round(filtered_df["AQI"].mean(), 2))
     k2.metric("Tomorrow Avg AQI", round(filtered_df["predicted_AQI_tomorrow"].mean(), 2))
     k3.metric("Active Stations", len(filtered_df))
-    k4.metric("Hotspots", len(filtered_df[filtered_df["hotspot_status"].isin(["Hotspot", "Emerging Hotspot"])]))
+    k4.metric("Hotspots", len(filtered_df[filtered_df["cluster_hotspot_status"] == "Hotspot Cluster"]))
     k5.metric("Fresh Stations", len(filtered_df[filtered_df["data_status"] == "Fresh"]))
 
     st.markdown("---")
@@ -167,9 +173,10 @@ with overview_tab:
         st.write(f"**Trend:** {station_row['forecast_trend']} ({station_row['AQI_change']})")
         st.write(f"**Dominant Pollutant:** {str(station_row['dominant_pollutant']).upper()} = {station_row['dominant_value']}")
         st.write(f"**Data Status:** {station_row['data_status']}")
-        st.write(f"**Hotspot:** {station_row['hotspot_status']} | {station_row['hotspot_priority']}")
         st.write(f"**GRAP Stage:** {station_row['GRAP_Stage']}")
         st.write(f"**GRAP Advisory:** {station_row['GRAP_Advisory']}")
+        st.write(f"**Cluster Hotspot Status:** {station_row['cluster_hotspot_status']}")
+        st.write(f"**Cluster Priority:** {station_row['cluster_priority']}")
 
         if "confidence_level" in station_row.index:
             st.write(f"**Confidence:** {station_row['confidence_level']} ({station_row['confidence_score']}%)")
@@ -181,6 +188,44 @@ with overview_tab:
     a2.warning(f"**Health Advisory**\n\n{station_row['health_advisory']}")
     a3.error(f"**Precautions**\n\n{station_row['precautions']}")
     a4.success(f"**Travel Advisory**\n\n{station_row['travel_advisory']}")
+
+    # st.subheader("🤖 AI-Generated Advisory")
+
+    # if st.button("Generate AI Advisory"):
+    #     try:
+    #         ai_text = generate_ai_advisory(
+    #             station=selected_station,
+    #             aqi=round(station_row["AQI"], 2),
+    #             category=station_row["AQI_Category"],
+    #             pollutant=station_row["dominant_pollutant"],
+    #             trend=station_row["forecast_trend"],
+    #             grap_stage=station_row["GRAP_Stage"],
+    #             hotspot=station_row["hotspot_status"]
+    #         )
+
+    #         st.success(ai_text)
+
+    #     except Exception as e:
+    #         st.error("AI advisory could not be generated. Check API key or quota.")
+    #         st.write(e)
+    st.subheader("🤖 AI Advisory")
+
+    if st.button("Generate AI Advisory"):
+        try:
+            ai_text = generate_gemini_advisory(
+                station=selected_station,
+                aqi=round(station_row["AQI"], 2),
+                category=station_row["AQI_Category"],
+                pollutant=station_row["dominant_pollutant"],
+                trend=station_row["forecast_trend"],
+                grap_stage=station_row["GRAP_Stage"],
+                hotspot=station_row["hotspot_status"]
+            )
+            st.success(ai_text)
+
+        except Exception as e:
+            st.error("Gemini advisory could not be generated. Check API key or quota.")
+            st.write(e)
 
     st.subheader("🚨 GRAP Status")
 
@@ -224,13 +269,15 @@ with map_tab:
                 <b>Computed Live AQI ({today_date}):</b> {round(row['AQI'], 2)} ({row['AQI_Category']})<br>
                 <b>Predicted AQI ({tomorrow_date}):</b> {round(row['predicted_AQI_tomorrow'], 2)} ({forecast_cat})<br>
                 <b>Trend:</b> {row['forecast_trend']} ({row['AQI_change']})<br>
+                <b>Cluster Status:</b> {row['cluster_hotspot_status']}<br>
+                <b>Cluster Priority:</b> {row['cluster_priority']}<br>
                 <b>Dominant Pollutant:</b> {str(row['dominant_pollutant']).upper()} = {row['dominant_value']}<br>
-                <b>Hotspot:</b> {row['hotspot_status']} ({row['hotspot_priority']})<br>
                 <b>Data Status:</b> {row['data_status']}<br>
                 {confidence_html}
                 <hr>
                 <b>Outdoor:</b> {row['outdoor_decision']}<br>
                 <b>Travel:</b> {row['travel_advisory']}
+
             </div>
             """
 
@@ -272,20 +319,27 @@ with map_tab:
 
 # ---------------- HOTSPOT TAB ----------------
 with hotspot_tab:
-    st.subheader("🔥 Hotspot Regions")
+    st.subheader("🔥 AI-Detected Hotspot Clusters")
 
-    hotspot_df = filtered_df.sort_values(["AQI", "predicted_AQI_tomorrow"], ascending=False).copy()
+    hotspot_df = filtered_df[
+        filtered_df["cluster_hotspot_status"] == "Hotspot Cluster"
+    ].sort_values("AQI", ascending=False).copy()
 
-    c1, c2 = st.columns([1.2, 1])
-
-    with c1:
+    if hotspot_df.empty:
+        st.success("No hotspot cluster detected currently.")
+    else:
         show_cols = [
-            "station", "AQI", "AQI_Category", "predicted_AQI_tomorrow",
-            "AQI_change", "forecast_trend", "dominant_pollutant",
-            "hotspot_status", "hotspot_priority", "data_status"
+            "station",
+            "AQI",
+            "AQI_Category",
+            "predicted_AQI_tomorrow",
+            "AQI_change",
+            "forecast_trend",
+            "dominant_pollutant",
+            "cluster_hotspot_status",
+            "cluster_priority",
+            "data_status"
         ]
-        if "confidence_level" in hotspot_df.columns:
-            show_cols += ["confidence_level"]
 
         st.dataframe(
             hotspot_df[show_cols],
@@ -293,8 +347,10 @@ with hotspot_tab:
             hide_index=True
         )
 
-    with c2:
+        st.markdown("### Top AI-Detected Hotspot Regions")
+
         top_hot = hotspot_df.head(10)
+
         fig = px.bar(
             top_hot.sort_values("AQI"),
             x="AQI",
@@ -303,8 +359,9 @@ with hotspot_tab:
             text="AQI",
             color="AQI",
             color_continuous_scale="OrRd",
-            title="Top 10 AQI Hotspot Regions"
+            title="Top 10 AI-Detected Hotspot Regions"
         )
+
         fig.update_traces(texttemplate="%{text:.0f}", textposition="outside")
         st.plotly_chart(chart_layout(fig, 500), use_container_width=True)
 
@@ -563,7 +620,8 @@ with data_tab:
     data_cols = [
         "station", "AQI", "AQI_Category", "predicted_AQI_tomorrow",
         "AQI_change", "forecast_trend", "dominant_pollutant",
-        "dominant_value", "hotspot_status", "hotspot_priority",
+        "dominant_value", "cluster_hotspot_status",
+            "cluster_priority",
         "outdoor_decision", "health_advisory", "precautions",
         "travel_advisory", "data_status", "datetime","predicted_AQI_day_1",
         "predicted_AQI_day_2","predicted_AQI_day_3","predicted_AQI_day_4",

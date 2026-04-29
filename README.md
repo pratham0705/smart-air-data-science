@@ -33,9 +33,12 @@ It uses Machine Learning (XGBoost, Random Forest) and Deep Learning (LSTM) to de
 cd "/Users/pratham07/Desktop/data analysis projects/smart air"
 
 ### Step 2: Run pipeline
+cd "/Users/pratham07/Desktop/data analysis projects/smart air"
+
 python3 src/data_fetch.py
 python3 src/aqi_calculator.py
 python3 src/live_prediction.py
+python3 src/clustering_hotspots.py
 
 ### Step 3: Run dashboard
 streamlit run dashboard/app.py
