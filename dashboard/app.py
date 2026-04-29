@@ -1,5 +1,8 @@
 import os
 from datetime import datetime, timedelta
+import numpy as np
+from scipy.interpolate import griddata
+import plotly.graph_objects as go
 # import sys
 # sys.path.append("src")
 # from ai_advisory import generate_ai_advisory
@@ -98,6 +101,68 @@ def chart_layout(fig, height=450):
         margin=dict(l=30, r=30, t=60, b=40),
         font=dict(size=13),
     )
+    return fig
+
+def create_smooth_aqi_heatmap(df):
+    map_df = df.dropna(subset=["latitude", "longitude", "AQI"]).copy()
+
+    map_df["latitude"] = map_df["latitude"].astype(float)
+    map_df["longitude"] = map_df["longitude"].astype(float)
+    map_df["AQI"] = map_df["AQI"].astype(float)
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Densitymapbox(
+        lat=map_df["latitude"],
+        lon=map_df["longitude"],
+        z=map_df["AQI"],
+        radius=75,
+        colorscale=[
+            [0.00, "green"],
+            [0.20, "yellow"],
+            [0.40, "orange"],
+            [0.65, "red"],
+            [0.85, "purple"],
+            [1.00, "maroon"]
+        ],
+        zmin=0,
+        zmax=500,
+        opacity=0.75,
+        hovertemplate="<b>AQI:</b> %{z}<extra></extra>"
+    ))
+
+    fig.add_trace(go.Scattermapbox(
+        lat=map_df["latitude"],
+        lon=map_df["longitude"],
+        mode="markers",
+        marker=dict(size=10, color="black"),
+        text=map_df["station"],
+        customdata=np.stack(
+            [map_df["AQI"], map_df["AQI_Category"], map_df["cluster_hotspot_status"]],
+            axis=-1
+        ),
+        hovertemplate=(
+            "<b>%{text}</b><br>"
+            "AQI: %{customdata[0]}<br>"
+            "Category: %{customdata[1]}<br>"
+            "Cluster: %{customdata[2]}<extra></extra>"
+        )
+    ))
+
+    fig.update_layout(
+        mapbox=dict(
+            style="open-street-map",
+            center=dict(
+                lat=map_df["latitude"].mean(),
+                lon=map_df["longitude"].mean()
+            ),
+            zoom=9.5
+        ),
+        height=720,
+        margin=dict(l=0, r=0, t=40, b=0),
+        title="Smooth AQI Heatmap"
+    )
+
     return fig
 
 
@@ -245,77 +310,149 @@ with overview_tab:
 
 # ---------------- MAP TAB ----------------
 with map_tab:
-    st.subheader("🗺️ Delhi AQI Station Map")
+    st.subheader("🗺️ Delhi AQI Map")
 
     map_choice = st.radio(
         "Choose Map Type",
-        ["Station Pin Map", "Pollution Heatmap", "Combined Map"],
+        ["Station Pin Map", "Pollution Heatmap", "Combined AQI Map"],
         horizontal=True
     )
 
-    m = folium.Map(location=[28.61, 77.23], zoom_start=10, tiles="CartoDB positron")
+    # ---------------- AQI LEGEND ----------------
+    legend_html = """
+    <div style="
+        position: fixed;
+        bottom: 40px;
+        left: 40px;
+        width: 210px;
+        z-index: 9999;
+        background-color: white;
+        border: 2px solid #444;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 13px;
+        box-shadow: 0px 0px 8px rgba(0,0,0,0.4);
+    ">
+        <b>AQI Legend</b><br>
+        <i style="background:#00e400;width:14px;height:14px;float:left;margin-right:8px;"></i> Good (0–50)<br>
+        <i style="background:#ffff00;width:14px;height:14px;float:left;margin-right:8px;"></i> Satisfactory (51–100)<br>
+        <i style="background:#ff7e00;width:14px;height:14px;float:left;margin-right:8px;"></i> Moderate (101–200)<br>
+        <i style="background:#ff0000;width:14px;height:14px;float:left;margin-right:8px;"></i> Poor (201–300)<br>
+        <i style="background:#8f3f97;width:14px;height:14px;float:left;margin-right:8px;"></i> Very Poor (301–400)<br>
+        <i style="background:#7e0023;width:14px;height:14px;float:left;margin-right:8px;"></i> Severe (401–500)
+    </div>
+    """
 
-    if map_choice in ["Station Pin Map", "Combined Map"]:
-        for _, row in filtered_df.iterrows():
-            forecast_cat = get_aqi_category(row["predicted_AQI_tomorrow"])
+    # ---------------- COLOR FUNCTION ----------------
+    def get_marker_color(category):
+        color_map = {
+            "Good": "green",
+            "Satisfactory": "lightgreen",
+            "Moderate": "orange",
+            "Poor": "red",
+            "Very Poor": "purple",
+            "Severe": "darkred"
+        }
+        return color_map.get(category, "gray")
 
-            confidence_html = ""
-            if "confidence_level" in row.index:
-                confidence_html = f"<b>Confidence:</b> {row['confidence_level']} ({row['confidence_score']}%)<br>"
+    # ---------------- BASE MAP ----------------
+    m = folium.Map(
+        location=[28.61, 77.23],
+        zoom_start=10,
+        tiles="CartoDB dark_matter",
+        control_scale=True
+    )
 
-            popup_html = f"""
-            <div style="font-family: Arial; width: 310px;">
-                <h4>{row['station']}</h4>
-                <b>Computed Live AQI ({today_date}):</b> {round(row['AQI'], 2)} ({row['AQI_Category']})<br>
-                <b>Predicted AQI ({tomorrow_date}):</b> {round(row['predicted_AQI_tomorrow'], 2)} ({forecast_cat})<br>
-                <b>Trend:</b> {row['forecast_trend']} ({row['AQI_change']})<br>
-                <b>Cluster Status:</b> {row['cluster_hotspot_status']}<br>
-                <b>Cluster Priority:</b> {row['cluster_priority']}<br>
-                <b>Dominant Pollutant:</b> {str(row['dominant_pollutant']).upper()} = {row['dominant_value']}<br>
-                <b>Data Status:</b> {row['data_status']}<br>
-                {confidence_html}
-                <hr>
-                <b>Outdoor:</b> {row['outdoor_decision']}<br>
-                <b>Travel:</b> {row['travel_advisory']}
-
-            </div>
-            """
-
-            tooltip = (
-                f"{row['station']} | AQI: {round(row['AQI'], 1)} | "
-                f"Tomorrow: {round(row['predicted_AQI_tomorrow'], 1)}"
-            )
-
-            folium.Marker(
-                location=[row["latitude"], row["longitude"]],
-                popup=folium.Popup(popup_html, max_width=350),
-                tooltip=tooltip,
-                icon=folium.Icon(
-                    color=get_color(row["AQI_Category"]),
-                    icon="map-marker",
-                    prefix="fa"
-                )
-            ).add_to(m)
-
-    if map_choice in ["Pollution Heatmap", "Combined Map"]:
+    # ---------------- HEATMAP FIRST ----------------
+    if map_choice in ["Pollution Heatmap", "Combined AQI Map"]:
         heat_data = filtered_df[["latitude", "longitude", "AQI"]].dropna().values.tolist()
 
         HeatMap(
             heat_data,
             min_opacity=0.55,
-            radius=85,
-            blur=65,
-            max_zoom=10,
-            name="AQI Heatmap"
+            radius=42,
+            blur=32,
+            max_zoom=12,
+            gradient={
+                0.10: "#00e400",
+                0.25: "#ffff00",
+                0.45: "#ff7e00",
+                0.65: "#ff0000",
+                0.85: "#8f3f97",
+                1.00: "#7e0023"
+            },
+            name="AQI Intensity Layer"
         ).add_to(m)
 
+    # ---------------- MARKERS AFTER HEATMAP ----------------
+    if map_choice in ["Station Pin Map", "Combined AQI Map"]:
+        for _, row in filtered_df.iterrows():
+            forecast_cat = get_aqi_category(row["predicted_AQI_tomorrow"])
+
+            confidence_html = ""
+            if "confidence_level" in row.index:
+                confidence_html = (
+                    f"<b>Confidence:</b> {row['confidence_level']} "
+                    f"({row['confidence_score']}%)<br>"
+                )
+
+            popup_html = f"""
+            <div style="font-family: Arial; width: 320px;">
+                <h4 style="margin-bottom:8px;">{row['station']}</h4>
+
+                <b>Computed Live AQI ({today_date}):</b>
+                {round(row['AQI'], 2)} ({row['AQI_Category']})<br>
+
+                <b>Predicted AQI ({tomorrow_date}):</b>
+                {round(row['predicted_AQI_tomorrow'], 2)} ({forecast_cat})<br>
+
+                <b>Trend:</b> {row['forecast_trend']} ({row['AQI_change']})<br>
+
+                <b>AI Hotspot Cluster:</b> {row['cluster_hotspot_status']}<br>
+                <b>Cluster Priority:</b> {row['cluster_priority']}<br>
+
+                <b>Dominant Pollutant:</b>
+                {str(row['dominant_pollutant']).upper()} = {row['dominant_value']}<br>
+
+                <b>Data Status:</b> {row['data_status']}<br>
+                {confidence_html}
+
+                <hr>
+
+                <b>Outdoor Decision:</b> {row['outdoor_decision']}<br>
+                <b>Travel Advisory:</b> {row['travel_advisory']}
+            </div>
+            """
+
+            tooltip = (
+                f"{row['station']} | AQI: {round(row['AQI'], 1)} | "
+                f"Tomorrow: {round(row['predicted_AQI_tomorrow'], 1)} | "
+                f"{row['cluster_hotspot_status']}"
+            )
+
+            folium.Marker(
+                location=[row["latitude"], row["longitude"]],
+                popup=folium.Popup(popup_html, max_width=360),
+                tooltip=tooltip,
+                icon=folium.Icon(
+                    color=get_marker_color(row["AQI_Category"]),
+                    icon="map-marker",
+                    prefix="fa"
+                )
+            ).add_to(m)
+
+    # ---------------- AQI LEGEND ----------------
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    # ---------------- LAYER CONTROL ----------------
     folium.LayerControl().add_to(m)
-    st_folium(m, width=None, height=650)
+
+    st_folium(m, width=None, height=720)
 
     st.caption(
-        "Note: Heatmap is an estimated spatial layer from available station points, not satellite imagery."
+        "Note: The AQI heat layer is generated from available monitoring station AQI values. "
+        "It represents estimated pollution intensity, not satellite imagery."
     )
-
 
 # ---------------- HOTSPOT TAB ----------------
 with hotspot_tab:
