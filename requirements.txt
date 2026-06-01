@@ -12,3 +12,4 @@ selenium
 joblib
 matplotlib
 google-genai
+python-dotenv
