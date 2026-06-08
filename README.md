@@ -2,7 +2,7 @@
 
 > A predictive analytics system for forecasting next-day Air Quality Index (AQI) and generating data-driven environmental insights.
 
-**🔴 Live Dashboard → [smart-air-data-science.streamlit.app](https://smart-air-data-science.streamlit.app](https://smart-air-data-science-h6jswphov3rvmwydyyt78g.streamlit.app)**
+**🔴 Live Dashboard → [smart-air-data-science.streamlit.app](https://smart-air-data-science-h6jswphov3rvmwydyyt78g.streamlit.app)**
 
 ---
 
