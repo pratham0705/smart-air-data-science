@@ -1,83 +1,111 @@
-# 🌍 Smart Air – AI-Based AQI Prediction & Advisory System
+# 🌫️ Smart Air: AQI Prediction & Advisory System
 
-## 📌 Overview
-Smart Air is an AI-powered system that predicts Air Quality Index (AQI) and provides future forecasts, hotspot detection, and health advisories.
+> A predictive analytics system for forecasting next-day Air Quality Index (AQI) and generating data-driven environmental insights.
 
-It uses Machine Learning (XGBoost, Random Forest) and Deep Learning (LSTM) to deliver accurate and actionable insights.
-
----
-
-## 🚀 Features
-- Real-time AQI calculation  
-- 4-day AQI forecasting  
-- Hotspot detection (high pollution areas)  
-- Health, travel & precaution advisories  
-- Feature importance (pollution cause analysis)  
-- Interactive dashboard (maps, charts, graphs)  
+**🔴 Live Dashboard → [smart-air-data-science.streamlit.app](https://smart-air-data-science.streamlit.app)**
 
 ---
 
-## 🛠️ Tech Stack
-- Python  
-- Pandas, NumPy  
-- Scikit-learn, XGBoost  
-- TensorFlow / Keras (LSTM)  
-- Streamlit (Dashboard)  
-- Plotly & Folium (Visualization)  
+## Overview
+
+Air quality in Delhi and other Indian cities fluctuates dramatically based on season, traffic, and weather patterns. This project builds an end-to-end ML pipeline that ingests historical AQI data, trains predictive models, and surfaces forecasts through an interactive Streamlit dashboard — giving users actionable air quality advisories before conditions worsen.
 
 ---
 
-## ▶️ How to Run
+## Key Results
 
-### Step 1: Go to project folder
-cd "/Users/pratham07/Desktop/data analysis projects/smart air"
-
-### Step 2: Run pipeline
-cd "/Users/pratham07/Desktop/data analysis projects/smart air"
-
-python3 src/data_fetch.py
-python3 src/aqi_calculator.py
-python3 src/live_prediction.py
-python3 src/clustering_hotspots.py
-
-### Step 3: Run dashboard
-streamlit run dashboard/app.py
+| Metric | Value |
+|---|---|
+| Forecast accuracy | ~89% |
+| Best model | Random Forest |
+| Deep learning model | LSTM |
+| Evaluation metrics | RMSE, MAE |
 
 ---
 
-## 🔁 First-Time Setup (Full Run)
+## Features
 
-cd "/Users/pratham07/Desktop/data analysis projects/smart air"
-
-python3 src/data_fetch.py
-python3 src/aqi_calculator.py
-python3 src/forecasting.py
-python3 src/lstm_forecasting.py
-python3 src/multiday_forecasting.py
-python3 src/live_prediction.py
-python3 src/clustering_hotspots.py
-
-streamlit run dashboard/app.py
+- **Data Pipeline** — Automated collection, preprocessing, and normalization of historical AQI data (handling missing values, feature selection)
+- **ML Forecasting** — Random Forest model for next-day AQI prediction (~89% accuracy)
+- **Deep Learning** — LSTM model trained on time-series AQI sequences for comparison
+- **Model Comparison** — Side-by-side RMSE and MAE evaluation to select the best-performing model
+- **Live Dashboard** — Interactive Streamlit app with real-time AQI trends, predictions, and pollution hotspot maps
+- **Advisory Generation** — Automated health advisories based on predicted AQI bands (Good / Moderate / Unhealthy / Hazardous)
 
 ---
 
-## 📊 Output
-- Dashboard showing:
-  - Current AQI & Predicted AQI  
-  - 4-day Forecast  
-  - Hotspot Map  
-  - Advisory System  
+## Tech Stack
+
+| Layer | Tools |
+|---|---|
+| Language | Python 3.x |
+| Data Processing | Pandas, NumPy |
+| Machine Learning | Scikit-learn (Random Forest) |
+| Deep Learning | TensorFlow / Keras (LSTM) |
+| Visualization | Matplotlib, Seaborn, Plotly |
+| Dashboard | Streamlit |
+| Evaluation | RMSE, MAE |
 
 ---
 
-## 🎯 Project Goal
-To transform air quality monitoring into prediction + analysis + decision support system.
+## Project Structure
+
+```
+smart-air/
+├── data/
+│   ├── raw/                  # Raw historical AQI datasets
+│   └── processed/            # Cleaned and normalized data
+├── notebooks/
+│   ├── 01_eda.ipynb          # Exploratory data analysis
+│   ├── 02_preprocessing.ipynb
+│   ├── 03_random_forest.ipynb
+│   └── 04_lstm_model.ipynb
+├── models/
+│   ├── rf_model.pkl          # Saved Random Forest model
+│   └── lstm_model.h5         # Saved LSTM model
+├── app.py                    # Streamlit dashboard
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-## ⭐ Acknowledgement
-Based on CPCB AQI standards and public datasets.
+## How to Run Locally
+
+```bash
+# Clone the repo
+git clone https://github.com/pratham0705/<repo-name>.git
+cd <repo-name>
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Launch the dashboard
+streamlit run app.py
+```
 
 ---
 
-⭐ If you like this project, feel free to star the repo!
+## How It Works
+
+1. **Data Collection** — Historical AQI data (PM2.5, PM10, NO2, SO2, CO, O3) is loaded and cleaned
+2. **Preprocessing** — Missing values imputed, features normalized, lag features engineered for time-series context
+3. **Model Training** — Random Forest and LSTM models trained and evaluated on an 80/20 split
+4. **Prediction** — Best model generates next-day AQI forecast per location
+5. **Advisory** — AQI band classification maps forecast to a health advisory category
+6. **Dashboard** — All outputs visualized in Streamlit with interactive filters and maps
+
+---
+
+## Future Improvements
+
+- [ ] Real-time API integration (OpenAQ / CPCB) for live data feeds
+- [ ] Multi-day forecast window (3-day, 7-day)
+- [ ] City-level comparison across major Indian metros
+- [ ] Push notification alerts when AQI crosses thresholds
+
+---
+
+## Author
+
+**Pratham Narula** — [LinkedIn](https://www.linkedin.com/in/pratham-narula-885203240) | [GitHub](https://github.com/pratham0705) | pratham0705narula@gmail.com
